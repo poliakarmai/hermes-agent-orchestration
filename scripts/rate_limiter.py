@@ -2,14 +2,17 @@
 """
 Per-tenant rate limiter.
 Использует SQLite для хранения счётчиков запросов.
-Поддерживает два режима:
-  1. rpm  — requests per minute (по умолчанию: 30 для demo, 60 для Pro)
-  2. rph  — requests per hour (по умолчанию: 500 для demo, 2000 для Pro)
+Поддерживает:
+  1. rpm / rph — requests per minute/hour
+  2. tpm — tokens per month (бюджет токенов)
 
 API:
-  check(tg_id, tier='demo') -> (allowed: bool, remaining: int, reset_in: float)
+  check(tg_id, tier='demo') -> (allowed, remaining, reset_in)
   record(tg_id, tier='demo') -> None
-  can_proceed(tg_id, tier='demo') -> bool  # check + record в одном вызове
+  can_proceed(tg_id, tier='demo') -> bool
+  record_tokens(tg_id, tokens_used) -> None
+  can_use_tokens(tg_id, tokens_needed) -> bool
+  get_token_budget(tg_id) -> {used, limit, remaining, reset_days}
 """
 import os
 import sqlite3
@@ -18,11 +21,11 @@ from datetime import datetime
 
 DB_PATH = os.path.expanduser("~/.hermes/data/rate_limits.db")
 
-# Лимиты по умолчанию
+# Лимиты
 TIER_LIMITS = {
-    "demo": {"rpm": 30, "rph": 500},
-    "pro":  {"rpm": 60, "rph": 2000},
-    "admin": {"rpm": 120, "rph": 5000},
+    "demo":  {"rpm": 30, "rph": 500,  "tpm": 1_000_000},     # 1M токенов/мес
+    "pro":   {"rpm": 60, "rph": 2000, "tpm": 5_000_000},     # 5M токенов/мес
+    "admin": {"rpm": 120, "rph": 5000, "tpm": 0},             # 0 = безлимит
 }
 
 
@@ -44,6 +47,14 @@ def _connect():
             tier TEXT DEFAULT 'demo',
             rpm_override INTEGER,
             rph_override INTEGER
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS token_budget (
+            tg_id INTEGER NOT NULL,
+            month_key TEXT NOT NULL,     -- 'YYYY-MM'
+            tokens_used INTEGER DEFAULT 0,
+            PRIMARY KEY (tg_id, month_key)
         )
     """)
     conn.commit()
@@ -155,6 +166,84 @@ def set_tier(tg_id, tier, rpm_override=None, rph_override=None):
     """, (tg_id, tier, rpm_override, rph_override))
     conn.commit()
     conn.close()
+
+
+# ─── Token Budget ──────────────────────────────────────────────
+
+def _get_token_limit(tg_id):
+    """Возвращает месячный лимит токенов для пользователя."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT tier FROM rate_config WHERE tg_id=?", (tg_id,)
+    ).fetchone()
+    conn.close()
+
+    tier = row[0] if row else "demo"
+    return TIER_LIMITS.get(tier, TIER_LIMITS["demo"]).get("tpm", 1_000_000)
+
+
+def record_tokens(tg_id, tokens_used):
+    """Записывает использованные токены в месячный бюджет."""
+    if tokens_used <= 0:
+        return
+    month_key = datetime.now().strftime("%Y-%m")
+    conn = _connect()
+    conn.execute("""
+        INSERT INTO token_budget (tg_id, month_key, tokens_used)
+        VALUES (?, ?, ?)
+        ON CONFLICT(tg_id, month_key)
+        DO UPDATE SET tokens_used = tokens_used + excluded.tokens_used
+    """, (tg_id, month_key, tokens_used))
+    conn.commit()
+    conn.close()
+
+
+def can_use_tokens(tg_id, tokens_needed=0):
+    """Проверяет, не превышен ли месячный бюджет токенов."""
+    limit = _get_token_limit(tg_id)
+    if limit == 0:  # безлимит
+        return True
+
+    month_key = datetime.now().strftime("%Y-%m")
+    conn = _connect()
+    row = conn.execute(
+        "SELECT tokens_used FROM token_budget WHERE tg_id=? AND month_key=?",
+        (tg_id, month_key)
+    ).fetchone()
+    conn.close()
+
+    used = row[0] if row else 0
+    return (used + tokens_needed) <= limit
+
+
+def get_token_budget(tg_id):
+    """Возвращает словарь {used, limit, remaining, reset_days}."""
+    limit = _get_token_limit(tg_id)
+    month_key = datetime.now().strftime("%Y-%m")
+
+    conn = _connect()
+    row = conn.execute(
+        "SELECT tokens_used FROM token_budget WHERE tg_id=? AND month_key=?",
+        (tg_id, month_key)
+    ).fetchone()
+    conn.close()
+
+    used = row[0] if row else 0
+    remaining = max(0, limit - used) if limit > 0 else -1  # -1 = unlimited
+
+    # Дней до сброса (конец месяца)
+    now = datetime.now()
+    next_month = now.replace(day=28) + __import__('datetime').timedelta(days=4)
+    reset_date = next_month.replace(day=1)
+    reset_days = (reset_date - now).days
+
+    return {
+        "used": used,
+        "limit": limit,
+        "remaining": remaining,
+        "reset_days": reset_days,
+        "pct": (used / limit * 100) if limit > 0 else 0,
+    }
 
 
 def prune_old_windows():
