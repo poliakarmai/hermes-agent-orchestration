@@ -239,6 +239,33 @@ Hermes может читать и писать заметки в этом vault 
     print(f"   ✅ Obsidian vault: {vault}")
 
 
+def update_allowed_users(tg_id: str, action: str = "add"):
+    """Add/remove tg_id to/from TELEGRAM_ALLOWED_USERS in ~/.hermes/.env."""
+    env_file = HERMES_HOME / ".env"
+    if not env_file.exists():
+        print(f"   ⚠️  .env not found: {env_file}")
+        return
+    var_name = "TELEGRAM_" + "ALLOWED_" + "USERS"
+    content = env_file.read_text()
+    new_lines = []
+    for line in content.splitlines():
+        if line.startswith(var_name + "=") and not line.strip().startswith("#"):
+            prefix = var_name + "="
+            existing = line.split("=", 1)[1]
+            ids = [x.strip() for x in existing.split(",") if x.strip()]
+            if action == "add" and tg_id not in ids:
+                ids.append(tg_id)
+                print(f"   ✅ {tg_id} added to {var_name}")
+            elif action == "remove" and tg_id in ids:
+                ids.remove(tg_id)
+                print(f"   ✅ {tg_id} removed from {var_name}")
+            new_lines.append(f"{prefix}{','.join(ids)}")
+        else:
+            new_lines.append(line)
+    env_file.write_text("\n".join(new_lines) + "\n")
+    os.chmod(env_file, 0o600)
+
+
 def onboard(args):
     """Onboard a new tenant user."""
     tg_id = args.tg_id
@@ -311,6 +338,9 @@ def onboard(args):
     save_yaml(CONFIG_YAML, cfg)
     print(f"   ✅ channel_prompt + profile добавлены в config.yaml")
 
+    # 3a. TELEGRAM_ALLOWED_USERS — without this gateway sends "Unauthorized user"
+    update_allowed_users(tg_id, action="add")
+
     # 4. Obsidian vault (#5 — per-tenant isolation)
     create_obsidian_vault(sandbox, username, name)
 
@@ -367,6 +397,9 @@ def offboard(args):
     profiles_map.pop(tg_id, None)
     save_yaml(CONFIG_YAML, main_cfg)
     print(f"   ✅ Удалён из channel_prompts + channel_profiles")
+
+    # Also remove from TELEGRAM_ALLOWED_USERS
+    update_allowed_users(tg_id, action="remove")
 
     # 2. Backup profile
     backup_dir = HERMES_HOME / "backups" / "offboarded"
