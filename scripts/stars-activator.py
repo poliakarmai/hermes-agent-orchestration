@@ -5,10 +5,52 @@
 """
 
 import os
+import json
 import sqlite3
 import subprocess
 import sys
 from datetime import datetime
+from urllib.request import urlopen, Request
+
+ENV_PATH = os.path.expanduser("~/.hermes/.env")
+ADMIN_ID = 5529208670  # Поляков Алексей
+
+
+def load_env():
+    """Загружает переменные из .env файла."""
+    env = {}
+    if os.path.exists(ENV_PATH):
+        with open(ENV_PATH) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, _, val = line.partition('=')
+                    env[key.strip()] = val.strip().strip('"').strip("'")
+    return env
+
+
+def notify_admin(username, tg_id, bot_token):
+    """Уведомление админа о новом Pro-клиенте."""
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = json.dumps({
+            "chat_id": ADMIN_ID,
+            "text": (
+                f"🎉 *Новый клиент Pro!*\n\n"
+                f"Пользователь: @{username}\n"
+                f"ID: `{tg_id}`\n"
+                f"Тариф: Pro (30 дн)\n"
+                f"Стоимость: 100 ⭐\n"
+                f"Статус: активирован ✅"
+            ),
+            "parse_mode": "Markdown"
+        }).encode()
+        req = Request(url, data=data, headers={"Content-Type": "application/json"})
+        with urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        print(f"[NOTIFY] Ошибка уведомления админа: {e}", file=sys.stderr)
+        return None
 
 DB_PATH = os.path.expanduser("~/.hermes/data/stars_payments.db")
 
@@ -46,6 +88,11 @@ def main():
         conn.close()
         return
 
+    env = load_env()
+    bot_token = env.get("TELEGRAM_BOT_TOKEN", "")
+
+    activated_users = []
+
     for row in rows:
         tg_id, username, amount, payment_id = row
 
@@ -62,10 +109,18 @@ def main():
             (tg_id, username, 1 if success else 0)
         )
 
+        if success:
+            activated_users.append((tg_id, username))
+
     conn.commit()
     conn.close()
 
-    if any(r for r in rows if True):  # если были активации
+    if activated_users:
+        # Уведомление админа о каждом новом клиенте
+        if bot_token:
+            for tg_id, username in activated_users:
+                notify_admin(username, tg_id, bot_token)
+
         # Перезагружаем gateway чтобы подхватил channel_profiles
         os.system("systemctl --user restart hermes-gateway 2>&1")
         print("[ACTIVATE] Gateway restarted")
