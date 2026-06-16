@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aegis AI Engine — Multi-Agent Orchestration Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #08090a;
+  --panel: #0f1011;
+  --surface: #191a1b;
+  --surface2: #28282c;
+  --text: #f7f8f8;
+  --text2: #d0d6e0;
+  --text3: #8a8f98;
+  --text4: #62666d;
+  --brand: #5e6ad2;
+  --brand-hover: #828fff;
+  --accent: #7170ff;
+  --green: #27a644;
+  --border: rgba(255,255,255,0.08);
+  --border-subtle: rgba(255,255,255,0.05);
+  --radius: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text2);
+  line-height: 1.6;
+  font-feature-settings: 'cv01','ss03';
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* Nav */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,9,10,0.85); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+nav .container {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px;
+}
+.logo { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+.logo span { color: var(--brand); }
+.nav-links { display: flex; gap: 24px; align-items: center; }
+.nav-links a {
+  color: var(--text3); text-decoration: none; font-size: 14px; font-weight: 500;
+  transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--text); }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 500;
+  text-decoration: none; cursor: pointer; border: none; transition: all 0.15s;
+}
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-primary:hover { background: var(--accent); }
+.btn-ghost { 
+  background: rgba(255,255,255,0.02); color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+/* Hero */
+.hero {
+  padding: 120px 0 80px; text-align: center;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 9999px;
+  background: rgba(94,106,210,0.1); border: 1px solid rgba(94,106,210,0.2);
+  color: var(--brand); font-size: 13px; font-weight: 500; margin-bottom: 24px;
+}
+.hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.hero h1 {
+  font-size: 56px; font-weight: 600; color: var(--text);
+  line-height: 1.05; letter-spacing: -1.2px; margin-bottom: 24px;
+}
+.hero h1 span { color: var(--brand); }
+.hero p {
+  font-size: 18px; color: var(--text3); max-width: 600px; margin: 0 auto 36px;
+  line-height: 1.6; font-weight: 400;
+}
+.hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* Stats */
+.stats {
+  display: flex; justify-content: center; gap: 48px; padding: 48px 0 80px;
+  border-top: 1px solid var(--border-subtle);
+}
+.stat { text-align: center; }
+.stat .num { font-size: 36px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
+.stat .label { font-size: 13px; color: var(--text4); margin-top: 4px; }
+
+/* Sections */
+section { padding: 80px 0; }
+.section-label {
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--brand); margin-bottom: 16px;
+}
+.section-title {
+  font-size: 36px; font-weight: 600; color: var(--text);
+  letter-spacing: -0.7px; margin-bottom: 16px; line-height: 1.15;
+}
+.section-subtitle {
+  font-size: 16px; color: var(--text3); max-width: 560px;
+  margin-bottom: 48px;
+}
+
+/* Bots grid */
+.bots-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+.bot-card {
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+  border-radius: 12px; padding: 28px; transition: border-color 0.2s, background 0.2s;
+}
+.bot-card:hover { border-color: var(--border-subtle); background: rgba(255,255,255,0.03); }
+.bot-icon { font-size: 32px; margin-bottom: 16px; }
+.bot-name { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 8px; letter-spacing: -0.3px; }
+.bot-handle {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--brand);
+  margin-bottom: 12px;
+}
+.bot-desc { font-size: 14px; color: var(--text3); margin-bottom: 16px; line-height: 1.55; }
+.bot-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+.bot-tag {
+  font-size: 12px; font-weight: 500; padding: 3px 10px;
+  border-radius: 9999px; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle); color: var(--text4);
+}
+
+/* Features */
+.features-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+}
+.feature-card {
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+  border-radius: 12px; padding: 28px;
+}
+.feature-card h4 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.feature-card p { font-size: 14px; color: var(--text3); line-height: 1.55; }
+
+/* Pricing */
+.pricing-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+}
+.pricing-card {
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+  border-radius: 12px; padding: 32px; text-align: center;
+}
+.pricing-card.pro { border-color: rgba(94,106,210,0.3); background: rgba(94,106,210,0.04); }
+.pricing-tier { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.pricing-card.pro .pricing-tier { color: var(--brand); }
+.pricing-price { font-size: 42px; font-weight: 600; color: var(--text); margin: 12px 0 4px; letter-spacing: -0.5px; }
+.pricing-period { font-size: 14px; color: var(--text4); margin-bottom: 24px; }
+.pricing-features { list-style: none; text-align: left; margin-bottom: 28px; }
+.pricing-features li {
+  font-size: 14px; color: var(--text3); padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.pricing-features li:last-child { border-bottom: none; }
+.pricing-features li::before { content: '✓ '; color: var(--green); font-weight: 600; }
+
+/* CTA */
+.cta-section {
+  background: rgba(94,106,210,0.06); border: 1px solid rgba(94,106,210,0.15);
+  border-radius: 16px; padding: 56px; text-align: center; margin: 80px auto;
+}
+.cta-section h3 { font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 12px; letter-spacing: -0.4px; }
+.cta-section p { color: var(--text3); margin-bottom: 28px; font-size: 16px; }
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--border-subtle); padding: 48px 0;
+  color: var(--text4); font-size: 13px; text-align: center;
+}
+footer a { color: var(--text3); text-decoration: none; }
+footer a:hover { color: var(--text); }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 36px; letter-spacing: -0.6px; }
+  .bots-grid, .features-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .stats { flex-wrap: wrap; gap: 24px; }
+  .nav-links { display: none; }
+  .cta-section { padding: 32px 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">Aegis <span>AI</span> Engine</div>
+    <div class="nav-links">
+      <a href="#bots">Боты</a>
+      <a href="#features">Возможности</a>
+      <a href="#pricing">Тарифы</a>
+      <a href="https://t.me/Apolaibot" class="btn btn-primary">@Apolaibot →</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge"><span class="dot"></span>5 тенантов в проде</div>
+    <h1>Multi-Agent<br><span>Orchestration</span> Platform</h1>
+    <p>Три AI-бота, 44 скилла, полная изоляция тенантов. От демо-чата до production-grade агентов с биллингом и мониторингом.</p>
+    <div class="hero-cta">
+      <a href="https://t.me/Apolaibot" class="btn btn-primary">Попробовать бесплатно →</a>
+      <a href="https://t.me/miropolbot" class="btn btn-ghost">Pro за 100 ⭐</a>
+    </div>
+  </div>
+</section>
+
+<div class="stats container">
+  <div class="stat"><div class="num">3</div><div class="label">бота в экосистеме</div></div>
+  <div class="stat"><div class="num">44</div><div class="label">скилла для тенантов</div></div>
+  <div class="stat"><div class="num">22</div><div class="label">пункта роадмапа ✅</div></div>
+  <div class="stat"><div class="num">&lt;300</div><div class="label">MB RAM вся система</div></div>
+</div>
+
+<section id="bots">
+  <div class="container">
+    <div class="section-label">Экосистема</div>
+    <h2 class="section-title">Три бота — три роли</h2>
+    <p class="section-subtitle">Каждый бот решает свою задачу. Никакого монолита.</p>
+
+    <div class="bots-grid">
+      <div class="bot-card">
+        <div class="bot-icon">🤖</div>
+        <div class="bot-name">Apolaibot</div>
+        <div class="bot-handle">@Apolaibot</div>
+        <div class="bot-desc">Демо-доступ для всех. Лёгкий чат с AI через DeepSeek. Никаких команд — просто пиши.</div>
+        <div class="bot-meta">
+          <span class="bot-tag">DeepSeek API</span>
+          <span class="bot-tag">~44 MB RAM</span>
+          <span class="bot-tag">30 RPM</span>
+        </div>
+      </div>
+
+      <div class="bot-card">
+        <div class="bot-icon">💳</div>
+        <div class="bot-name">Miropolbot</div>
+        <div class="bot-handle">@miropolbot</div>
+        <div class="bot-desc">Оплата Pro-подписки через Telegram Stars. Мгновенный онбординг — от платежа до доступа за секунды.</div>
+        <div class="bot-meta">
+          <span class="bot-tag">Stars 100 ⭐</span>
+          <span class="bot-tag">~10 MB RAM</span>
+          <span class="bot-tag">Мгновенный</span>
+        </div>
+      </div>
+
+      <div class="bot-card">
+        <div class="bot-icon">🚀</div>
+        <div class="bot-name">Morearbot</div>
+        <div class="bot-handle">@Morearbot</div>
+        <div class="bot-desc">Полноценный Hermes Agent для Pro-тенантов. Изоляция, Obsidian vault, веб-поиск, торговые скиллы.</div>
+        <div class="bot-meta">
+          <span class="bot-tag">44 скилла</span>
+          <span class="bot-tag">~230 MB RAM</span>
+          <span class="bot-tag">3-слойная изоляция</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container">
+    <div class="section-label">Возможности</div>
+    <h2 class="section-title">Что под капотом</h2>
+    <p class="section-subtitle">Платформа построена вокруг безопасности и автоматизации.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <h4>🛡️ 3-слойная изоляция</h4>
+        <p>Toolsets → Linux users → iptables. Каждый тенант в своей песочнице. Данные не пересекаются.</p>
+      </div>
+      <div class="feature-card">
+        <h4>🔄 Двухсторонняя синхронизация скиллов</h4>
+        <p>Тенанты могут предлагать скиллы → 4-stage review (валидация → security → judge → adversarial) → в базу всем.</p>
+      </div>
+      <div class="feature-card">
+        <h4>💰 Автоматический биллинг</h4>
+        <p>Telegram Stars → мгновенный онбординг → депровижнинг через 30 дней. Алерты админу на каждом шагу.</p>
+      </div>
+      <div class="feature-card">
+        <h4>📊 Мониторинг и дашборд</h4>
+        <p>Rate limiting, latency, ошибки, аудит-трейл. HTML-дашборд с автообновлением каждые 30 секунд.</p>
+      </div>
+      <div class="feature-card">
+        <h4>⏱️ Rate limiting per-tenant</h4>
+        <p>Demo: 30 RPM / 500 RPH / 1M токенов/мес. Pro: 60/2000/5M. Token budget с помесячным учётом.</p>
+      </div>
+      <div class="feature-card">
+        <h4>💾 Авто-бэкапы и депровижнинг</h4>
+        <p>Ежедневные бэкапы профилей (ротация 7 дней). Авто-отключение Pro при истечении подписки.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="container">
+    <div class="section-label">Тарифы</div>
+    <h2 class="section-title">Простой биллинг</h2>
+    <p class="section-subtitle">Никаких карт. Только Telegram Stars.</p>
+
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-tier">Demo</div>
+        <div class="pricing-price">0 ⭐</div>
+        <div class="pricing-period">бесплатно навсегда</div>
+        <ul class="pricing-features">
+          <li>Чат с AI (DeepSeek)</li>
+          <li>30 запросов в минуту</li>
+          <li>1M токенов в месяц</li>
+          <li>История диалога (20 сообщений)</li>
+        </ul>
+        <a href="https://t.me/Apolaibot" class="btn btn-ghost" style="width:100%">@Apolaibot →</a>
+      </div>
+
+      <div class="pricing-card pro">
+        <div class="pricing-tier">Pro</div>
+        <div class="pricing-price">100 ⭐</div>
+        <div class="pricing-period">30 дней (~80₽)</div>
+        <ul class="pricing-features">
+          <li>Полный Hermes Agent</li>
+          <li>44 скилла (веб-поиск, файлы, код)</li>
+          <li>60 RPM / 2000 RPH</li>
+          <li>5M токенов в месяц</li>
+          <li>Obsidian vault (память)</li>
+          <li>Изолированная песочница (Linux)</li>
+          <li>Приоритетная обработка</li>
+        </ul>
+        <a href="https://t.me/miropolbot" class="btn btn-primary" style="width:100%">Оплатить 100 ⭐ →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container">
+  <div class="cta-section">
+    <h3>Готов начать?</h3>
+    <p>Напиши @Apolaibot прямо сейчас. Demo-доступ мгновенный и бесплатный.</p>
+    <a href="https://t.me/Apolaibot" class="btn btn-primary">@Apolaibot →</a>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <p>Aegis AI Engine — multi-tenant AI orchestration platform. Built with Hermes Agent.</p>
+    <p style="margin-top:8px"><a href="https://github.com/poliakarmai/hermes-agent-orchestration">GitHub</a> · @Apolaibot · @miropolbot · @Morearbot</p>
+  </div>
+</footer>
+
+</body>
+</html>
