@@ -134,15 +134,38 @@ def sync_base(tenant: str, dry_run: bool = False) -> dict:
 
 
 def review_pipeline(skill_name: str, tenant: str, skill_file: Path) -> dict:
-    """Three-stage review: security → judge → adversarial.
+    """Four-stage review: validate → security → judge → adversarial.
     Returns {passed, stage, score, findings}."""
     import subprocess, tempfile
 
     content = skill_file.read_text()
-    result = {"passed": False, "stage": "security", "score": 0, "findings": []}
+    result = {"passed": False, "stage": "validate", "score": 0, "findings": []}
+
+    # Stage 0: Syntax & Structure Validation (CI/CD)
+    print(f"  🧪 Stage 0/4: Syntax validation...")
+    validator = Path(__file__).parent / "skill-validate.py"
+    if validator.exists():
+        try:
+            r = subprocess.run(
+                ["python3", str(validator), str(skill_file), "--json"],
+                capture_output=True, text=True, timeout=10
+            )
+            if r.stdout.strip():
+                data = json.loads(r.stdout)
+                if not data.get("passed", False):
+                    result["findings"] = data.get("errors", [])
+                    result["score"] = data.get("score", 0)
+                    print(f"    ⛔ FAILED: {len(result['findings'])} errors")
+                    return result
+                else:
+                    if data.get("warnings"):
+                        print(f"    ⚠️ {len(data['warnings'])} warnings (non-blocking)")
+                    print(f"    ✅ Passed (score {data.get('score', 100)})")
+        except Exception as e:
+            print(f"    ⚠️ Validator error: {e} (continuing)")
 
     # Stage 1: Security scan
-    print(f"  🔒 Stage 1/3: Security scan...")
+    print(f"  🔒 Stage 1/4: Security scan...")
     scanner = Path(__file__).parent / "skill-security-scan.py"
     if scanner.exists():
         try:
@@ -168,7 +191,7 @@ def review_pipeline(skill_name: str, tenant: str, skill_file: Path) -> dict:
     print(f"    ✅ Passed")
 
     # Stage 2: Judge (DeepSeek API)
-    print(f"  ⚖️  Stage 2/3: Judge review...")
+    print(f"  ⚖️  Stage 2/4: Judge review...")
     judge = Path.home() / ".local" / "bin" / "judge"
     if not judge.exists():
         print(f"    ⚠️ Judge not found, skipping")
@@ -191,7 +214,7 @@ def review_pipeline(skill_name: str, tenant: str, skill_file: Path) -> dict:
     print(f"    ✅ Passed")
 
     # Stage 3: Adversarial review (second opinion via DeepSeek)
-    print(f"  🧠 Stage 3/3: Adversarial review...")
+    print(f"  🧠 Stage 3/4: Adversarial review...")
     import urllib.request
     env_file = Path.home() / ".hermes" / ".env"
     deepseek_key = ""

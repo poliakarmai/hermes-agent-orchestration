@@ -205,6 +205,41 @@ def get_rate_info():
     return info
 
 
+def get_metrics_summary():
+    """Возвращает сводку метрик из metrics-collector."""
+    info = {}
+    metrics_db = HERMES_HOME / "data" / "tenant_metrics.db"
+    if not metrics_db.exists():
+        return info
+
+    conn = sqlite3.connect(str(metrics_db))
+    try:
+        rows = conn.execute("""
+            SELECT tg_id,
+                   SUM(requests) as total_req,
+                   SUM(errors) as total_err,
+                   SUM(total_latency) as total_lat,
+                   SUM(latency_samples) as lat_n
+            FROM metrics_hourly
+            WHERE hour >= datetime('now','localtime','-24 hours')
+            GROUP BY tg_id
+        """).fetchall()
+
+        for tg_id, req, err, lat, lat_n in rows:
+            avg_lat = (lat / lat_n * 1000) if lat_n and lat_n > 0 else 0
+            err_rate = round((err / req * 100), 1) if req > 0 else 0
+            info[tg_id] = {
+                "requests": req,
+                "errors": err,
+                "error_rate": err_rate,
+                "avg_latency_ms": round(avg_lat, 0),
+            }
+    except sqlite3.OperationalError:
+        pass
+    conn.close()
+    return info
+
+
 def pct_class(pct):
     if pct >= 0.8:
         return "danger"
@@ -217,6 +252,7 @@ def generate():
     tenants = get_tenant_list()
     subs = get_subscription_info()
     rates = get_rate_info()
+    metrics = get_metrics_summary()
 
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -226,13 +262,15 @@ def generate():
     demo_count = len(tenants) - pro_count
     total_rpm = sum(rates.get(t["tg_id"], {}).get("rpm_used", 0) for t in tenants)
     total_rph = sum(rates.get(t["tg_id"], {}).get("rph_used", 0) for t in tenants)
+    total_req = sum(metrics.get(t["tg_id"], {}).get("requests", 0) for t in tenants)
+    total_err = sum(metrics.get(t["tg_id"], {}).get("errors", 0) for t in tenants)
 
     summary_cards = f"""
     <div class="summary-card"><div class="number" style="color:#38bdf8">{len(tenants)}</div><div class="label">Всего тенантов</div></div>
     <div class="summary-card"><div class="number" style="color:#22c55e">{pro_count}</div><div class="label">Pro активных</div></div>
     <div class="summary-card"><div class="number" style="color:#64748b">{demo_count}</div><div class="label">Demo</div></div>
-    <div class="summary-card"><div class="number" style="color:#f59e0b">{total_rpm}</div><div class="label">RPM total</div></div>
-    <div class="summary-card"><div class="number" style="color:#a78bfa">{total_rph}</div><div class="label">RPH total</div></div>
+    <div class="summary-card"><div class="number" style="color:#f59e0b">{total_req}</div><div class="label">Запросов 24ч</div></div>
+    <div class="summary-card"><div class="number" style="color:#ef4444">{total_err}</div><div class="label">Ошибок 24ч</div></div>
     """
 
     # Tenant cards
@@ -241,6 +279,7 @@ def generate():
         tg_id = t["tg_id"]
         sub = subs.get(tg_id, {})
         rate = rates.get(tg_id, {})
+        met = metrics.get(tg_id, {})
 
         # Subscription
         if sub.get("active"):
@@ -278,6 +317,29 @@ def generate():
         vault_exists = Path(t["sandbox"], "obsidian-vault").exists()
         vault_icon = "✅" if vault_exists else "❌"
 
+        # Metrics
+        if met:
+            req = met.get("requests", 0)
+            err = met.get("errors", 0)
+            avg_lat = met.get("avg_latency_ms", 0)
+            err_rate = met.get("error_rate", 0)
+            lat_class = "danger" if avg_lat > 5000 else ("warn" if avg_lat > 2000 else "ok")
+            metrics_html = f"""
+            <div class="metric">
+                <div class="metric-label">Запросы 24ч</div>
+                <div class="metric-value">{req}</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Ошибки</div>
+                <div class="metric-value {'danger' if err_rate > 10 else ('warn' if err_rate > 5 else 'ok')}">{err} ({err_rate}%)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Latency</div>
+                <div class="metric-value {lat_class}">{avg_lat:.0f} мс</div>
+            </div>"""
+        else:
+            metrics_html = '<div class="metric"><div class="metric-label">Метрики</div><div class="metric-value">нет данных</div></div>'
+
         cards.append(f"""
         <div class="card {card_class}">
             <div class="card-header">
@@ -290,6 +352,7 @@ def generate():
             <div style="color:#94a3b8;font-size:13px;margin-bottom:10px">{sub_text} | Vault {vault_icon} | {t['profile']}</div>
             <div class="metrics">
                 {rate_html}
+                {metrics_html}
             </div>
         </div>""")
 
