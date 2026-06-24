@@ -1,76 +1,84 @@
-# AGENTS.md — Hermes Agent Orchestration (Git)
+# AGENTS.md — Hermes Orchestration
 
-> Навигация для AI-агентов. Git-репозиторий с документацией и скриптами оркестрации.
+> Навигация для AI-агентов. Git-репозиторий оркестрации multi-tenant Hermes.
 
 ## Что это
 
-Git-репозиторий (`~/projects/hermes-agent-orchestration`) с документацией, планами и скриптами оркестрации Hermes.  
-Зеркало Obsidian-заметок по оркестрации, плюс исполняемые скрипты.
+Рабочий репозиторий конфигурации и скриптов оркестрации: три тенанта, изоляция профилей, боты, синхронизация скиллов, платёжные активаторы.
 
 ## Структура
 
 ```
-projects/hermes-agent-orchestration/
+hermes-orchestration/
+├── bots/
+│   ├── miropolbot.py        ← Morearbot (тенант-бот 1)
+│   └── apolaibot-demo.py    ← Apolai (тенант-бот 2, demo)
+├── configs/
+│   ├── tenant-config.yaml   ← Конфигурация тенантов
+│   └── skill-tiers.yaml     ← Уровни доступа к скиллам
+├── scripts/
+│   ├── skill-sync.py        ← Синхронизация скиллов между профилями
+│   ├── stars-activator.py   ← Активатор Telegram Stars (Pro)
+│   └── hermes-tenant        ← CLI для управления тенантами
 ├── docs/
-│   ├── orchestration-master.md          ← Главный документ по оркестрации
-│   ├── roadmap-orchestration.md         ← Roadmap
-│   ├── kaggle-ai-agents-course.md       ← Заметки по Kaggle-курсу
-│   └── aegis-landing.html               ← Лендинг Aegis
-└── scripts/
-    ├── deepseek-balance-monitor.py      ← Монитор баланса DeepSeek API
-    ├── rate_limiter.py                  ← Rate limiter
-    ├── skill-sync.py                    ← Синхронизация скиллов
-    ├── skill-validate.py                ← Валидация скиллов
-    ├── metrics-collector.py             ← Сбор метрик
-    ├── tenant-backup.py                 ← Бэкап тенантов
-    └── generate-tenant-dashboard.py     ← Дашборд тенантов
+│   ├── 01-infrastructure.md ← Инфраструктура
+│   ├── 02-skill-sync.md     ← Синхронизация скиллов
+│   ├── 03-constitution.md   ← Конституция оркестрации
+│   ├── 05-onboarding-checklist.md ← Онбординг новых тенантов
+│   └── 06-roadmap.md        ← План развития
+└── README.md
 ```
 
-## Ключевые скрипты
+## Архитектура
 
-| Скрипт | Назначение |
-|--------|-----------|
-| `skill-sync.py` | Синхронизация скиллов между профилями |
-| `skill-validate.py` | Валидация SKILL.md (YAML, структура) |
-| `metrics-collector.py` | Сбор метрик использования скиллов |
-| `tenant-backup.py` | Бэкап профилей тенантов |
-| `deepseek-balance-monitor.py` | Мониторинг баланса DeepSeek API |
-| `rate_limiter.py` | Rate limiting для API-запросов |
+```
+Море (default) ──полный доступ──▶ все toolsets, trading, cron
+    │
+    ├── Morearbot ──урезанный──▶ chat + /upgrade
+    └── Apolai ────урезанный──▶ chat + /upgrade
+```
 
 ## Как запускать
 
 ```bash
-cd ~/projects/hermes-agent-orchestration
+cd ~/hermes-orchestration
 
 # Синхронизация скиллов
 python3 scripts/skill-sync.py
 
-# Валидация скиллов
-python3 scripts/skill-validate.py
+# Активатор Telegram Stars
+python3 scripts/stars-activator.py
 
-# Бэкап тенантов
-python3 scripts/tenant-backup.py
-
-# Дашборд
-python3 scripts/generate-tenant-dashboard.py
+# CLI управления тенантами
+python3 scripts/hermes-tenant --help
 ```
+
+## Ключевые файлы
+
+| Файл | Назначение |
+|------|-----------|
+| `configs/tenant-config.yaml` | Конфигурация тенантов (права, лимиты) |
+| `configs/skill-tiers.yaml` | Уровни доступа: какие скиллы какому тенанту |
+| `scripts/skill-sync.py` | Синхронизация скиллов default → тенанты |
+| `scripts/stars-activator.py` | Активация Pro по оплате Telegram Stars |
+| `bots/miropolbot.py` | Morearbot — основной тенант-бот |
 
 ## Конвенции
 
 - Git-репозиторий, ветка `master`
+- Python 3.11+ для скриптов
+- Конфиги в YAML
 - Документация в `docs/` на русском
-- Скрипты в `scripts/` с Python 3.11+
-- Зеркалирует Obsidian vault (основной источник — `obsidian-vault/hermes/`)
+- Основной источник правды: `~/.hermes/config.yaml`
 
 ## Инварианты
 
-1. **Obsidian — основной источник.** Этот репозиторий — зеркало, не наоборот.
-2. **Скрипты идемпотентны.** Повторный запуск не должен ломать состояние.
-3. **Не редактировать прод-конфиги напрямую.** Все изменения через скрипты синхронизации.
+1. **Один гейтвей — две роли.** Не плодить отдельных гейтвеев для ботов.
+2. **Изоляция через profiles.** Тенанты не видят чужих скиллов/памяти/кронов.
+3. **Права через channel_profiles.** Не патчить код ботов для разграничения доступа.
 
 ## Критерии готовности
 
-- [ ] `python3 scripts/skill-sync.py` — без ошибок
-- [ ] `python3 scripts/tenant-backup.py` — создаёт бэкап
-- [ ] `python3 scripts/generate-tenant-dashboard.py` — генерит дашборд
-- [ ] Git clean: все изменения закоммичены или в `.gitignore`
+- [ ] `scripts/skill-sync.py` отрабатывает без ошибок
+- [ ] Боты запускаются (`bots/miropolbot.py`, `bots/apolaibot-demo.py`)
+- [ ] Конфиги валидны (YAML парсится)
