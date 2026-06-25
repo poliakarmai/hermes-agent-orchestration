@@ -28,7 +28,8 @@ MESSAGE_PATTERNS = [
 ]
 
 # Игнорируем админские ID
-ADMIN_IDS = {5529208670, 319665243}
+import sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from hermes_config import ADMIN_IDS
 
 
 def get_last_position():

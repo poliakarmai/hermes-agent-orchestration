@@ -57,17 +57,19 @@ python3 scripts/hermes-tenant --help
 
 | Файл | Назначение |
 |------|-----------|
+| `hermes_config.py` | **SSOT для ID.** ADMIN_IDS, UNLIMITED_USERS. Читает из env: `HERMES_ADMIN_IDS`, `HERMES_UNLIMITED_USERS`. Менять здесь, не в коде скриптов. |
 | `configs/tenant-config.yaml` | Конфигурация тенантов (права, лимиты) |
 | `configs/skill-tiers.yaml` | Уровни доступа: какие скиллы какому тенанту |
 | `scripts/skill-sync.py` | Синхронизация скиллов default → тенанты |
 | `scripts/stars-activator.py` | Активация Pro по оплате Telegram Stars |
 | `bots/miropolbot.py` | Morearbot — основной тенант-бот |
 
-## Конвенции
+## Инварианты
 
-- Git-репозиторий, ветка `master`
-- Python 3.11+ для скриптов
-- Конфиги в YAML
+1. **Один гейтвей — две роли.** Не плодить отдельных гейтвеев для ботов.
+2. **Изоляция через profiles.** Тенанты не видят чужих скиллов/памяти/кронов.
+3. **Права через channel_profiles.** Не патчить код ботов для разграничения доступа.
+4. **hermes_config.py — SSOT для ID.** Никогда не хардкодить ADMIN_ID/UNLIMITED_USERS в скриптах. Всегда импортировать из `hermes_config.py`.
 - Документация в `docs/` на русском
 - Основной источник правды: `~/.hermes/config.yaml`
 

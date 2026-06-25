@@ -21,12 +21,22 @@ from datetime import datetime
 
 DB_PATH = os.path.expanduser("~/.hermes/data/rate_limits.db")
 
-# Лимиты
-TIER_LIMITS = {
-    "demo":  {"rpm": 30, "rph": 500,  "tpm": 1_000_000},     # 1M токенов/мес
-    "pro":   {"rpm": 60, "rph": 2000, "tpm": 5_000_000},     # 5M токенов/мес
-    "admin": {"rpm": 120, "rph": 5000, "tpm": 0},             # 0 = безлимит
-}
+# Лимиты — из env с fallback'ом на дефолты
+def _load_tier_limits() -> dict:
+    raw = os.environ.get("HERMES_TIER_LIMITS", "")
+    if raw:
+        import json
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+    return {
+        "demo":  {"rpm": 30, "rph": 500,  "tpm": 1_000_000},
+        "pro":   {"rpm": 60, "rph": 2000, "tpm": 5_000_000},
+        "admin": {"rpm": 120, "rph": 5000, "tpm": 0},
+    }
+
+TIER_LIMITS = _load_tier_limits()
 
 
 def _connect():

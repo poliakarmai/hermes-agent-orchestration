@@ -35,15 +35,15 @@ try:
 except ImportError:
     WHISPER_ENABLED = False
 
-ADMIN_IDS = {319665243, 5529208670}  # Poliakarm + Cryptos
+from hermes_config import ADMIN_IDS
 ADMIN_2FA_FILE = _Path.home() / ".local" / "share" / "apolaibot" / "admin_2fa.json"
 
 def _load_2fa():
     try:
         if ADMIN_2FA_FILE.exists():
             return _json.loads(ADMIN_2FA_FILE.read_text())
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"_load_2fa: {e}")
     return {}
 
 def _save_2fa(data):
@@ -198,8 +198,8 @@ def _load_users():
     try:
         if USERS_FILE.exists():
             return _json.loads(USERS_FILE.read_text())
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"_load_2fa: {e}")
     return {}
 
 def _save_users(users):
@@ -210,8 +210,8 @@ def _load_feedback():
     try:
         if FEEDBACK_FILE.exists():
             return _json.loads(FEEDBACK_FILE.read_text())
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"_load_2fa: {e}")
     return {}
 
 def _save_feedback(fb):
@@ -299,7 +299,7 @@ async def cmd_start(update, context):
             f"Привет, {update.effective_user.first_name}!\n\n"
             "**@Apolaibot** — мы не продаём «попробуйте AI». "
             "Мы даём готового агента с навыками под ваш процесс.\n\n"
-            "🌐 http://PUBLIC_URL — тарифы и подробности\n\n"
+            f"🌐 {PUBLIC_URL} — тарифы и подробности\n\n"
             "👆 *Кто вы по роду занятий?*",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -317,7 +317,7 @@ async def cmd_start(update, context):
             f"Hello, {update.effective_user.first_name}!\n\n"
             "**@Apolaibot** — we don't sell «try AI». "
             "We deliver a ready agent with skills for your process.\n\n"
-            "🌐 http://PUBLIC_URL — pricing & details\n\n"
+            f"🌐 {PUBLIC_URL} — pricing & details\n\n"
             "👆 *What's your profession?*",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -520,7 +520,7 @@ async def cmd_stats(update, context):
 async def cmd_upgrade(update, context):
     await update.message.reply_markdown(
         "🚀 **@Apolaibot — тарифы**\n\n"
-        "🌐 [apolaibot.ru](http://PUBLIC_URL)\n\n"
+        f"🌐 [Apolaibot]({PUBLIC_URL})\n\n"
         "🆓 **Start** — бесплатно навсегда\n"
         "  • 1M токенов/мес • чат + скиллы\n\n"
         "💎 **Basic** — 690₽/мес\n"
@@ -626,8 +626,8 @@ async def cmd_tools(update, context):
                         op = entry.get("operation", "?")
                         agent = entry.get("agent", "?")
                         lines_out.append(f"• `{ts}` {op} by {agent}")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.error(f"cmd_tools JSON: {e}")
     except Exception:
         pass
     lines_out.append("\n_This is what happens under the hood._")
@@ -755,7 +755,7 @@ async def handle_voice(update, context):
 # File upload limits
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_FILES_PER_USER = 3
-UNLIMITED_USERS = {319665243, 2115597720, 470549555}  # Poliakarm, Kolesnikov, Ilya
+from hermes_config import UNLIMITED_USERS
 _user_file_counts = {}
 
 async def handle_document(update, context):
@@ -820,7 +820,8 @@ async def handle_document(update, context):
         _user_file_counts[user_id] = max(0, _user_file_counts.get(user_id, 1) - 1)
         if dl_path:
             try: dl_path.unlink(missing_ok=True)
-            except Exception: pass
+            except Exception as e:
+                logger.debug(f"cleanup temp file: {e}")
 
 def main():
     logger.info(f"Starting apolaibot-demo (model={MODEL}, api={API_URL})")

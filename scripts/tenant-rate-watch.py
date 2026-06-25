@@ -14,7 +14,9 @@ from urllib.request import urlopen, Request
 
 DB_PATH = os.path.expanduser("~/.hermes/data/rate_limits.db")
 ENV_PATH = os.path.expanduser("~/.hermes/.env")
-ADMIN_ID = 5529208670
+import sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from hermes_config import ADMIN_IDS
+ADMIN_ID = next(iter(ADMIN_IDS))
 ALERT_THRESHOLD = 0.8  # алерт при 80% использования
 
 

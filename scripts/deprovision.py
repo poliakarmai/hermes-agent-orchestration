@@ -13,7 +13,9 @@ from urllib.request import urlopen, Request
 
 DB_PATH = os.path.expanduser("~/.hermes/data/stars_payments.db")
 ENV_PATH = os.path.expanduser("~/.hermes/.env")
-ADMIN_ID = 5529208670  # Поляков Алексей
+import sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from hermes_config import ADMIN_IDS
+ADMIN_ID = next(iter(ADMIN_IDS))
 
 
 def load_env():

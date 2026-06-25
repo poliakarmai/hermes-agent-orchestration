@@ -14,11 +14,13 @@ from urllib.request import urlopen, Request
 
 ENV_PATH = os.path.expanduser("~/.hermes/.env")
 RATE_DB = os.path.expanduser("~/.hermes/data/rate_limits.db")
-ADMIN_ID = 5529208670
+import sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from hermes_config import ADMIN_IDS
+ADMIN_ID = next(iter(ADMIN_IDS))
 
-# Пороги алертов
-MONTHLY_SPEND_LIMIT_USD = 50.0   # алерт при превышении
-DEEPSEEK_PRICE_PER_1M = 0.27     # $0.27 за 1M токенов (deepseek-chat)
+# Пороги алертов — из env с fallback'ом
+MONTHLY_SPEND_LIMIT_USD = float(os.environ.get("HERMES_SPEND_LIMIT_USD", "50.0"))
+DEEPSEEK_PRICE_PER_1M = float(os.environ.get("DEEPSEEK_PRICE_PER_1M", "0.27"))
 
 BALANCE_CHECK_URL = "https://api.deepseek.com/v1/models"
 

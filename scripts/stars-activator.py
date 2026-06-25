@@ -13,7 +13,9 @@ from datetime import datetime
 from urllib.request import urlopen, Request
 
 ENV_PATH = os.path.expanduser("~/.hermes/.env")
-ADMIN_ID = 5529208670  # Поляков Алексей
+import sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from hermes_config import ADMIN_IDS
+ADMIN_ID = next(iter(ADMIN_IDS))  # first admin
 
 
 def load_env():
