@@ -1,5 +1,15 @@
 # Changelog — Hermes Agent Orchestration
 
+## 2026-09-25
+
+### Tenant isolation — восстановление после обновления v0.19.0
+- Патч изоляции (`channel_profiles` → `disabled_toolsets` + MCP-изоляция + `tenant_name`) восстановлен в site-packages `gateway/run.py` — был стёрт обновлением от 22.07
+- `check-gateway-patch.py` — watchdog переприменяет патч (`RUN_PY` → site-packages, исправлен баг отступа, полный патч с MCP)
+- Cron-джоба `gateway-patch-watchdog` (every 10m, no_agent)
+- `skill-tiers.yaml`: убраны 15 битых записей (71 → 56 base)
+- Drift скиллов вычищен у тенантов (лишние → `skills.archived/`)
+- `ddgs` установлен в системный python3 (веб-поиск у тенантов)
+
 ## 2026-08-09
 
 ### Apolaibot v3.0
